@@ -74,12 +74,11 @@ const MoreInfoButton = new Lang.Class({
         let self = this;
         this.f1.getCurrentEvent(function(event) {
             if (event) {
-                let eventStr = event.type;
-                self.setStatusLabel(`${eventStr} in ${event.delta.humanize()}`);
+                self.setStatusLabel(`${event.sessionShortName} in ${event.delta().humanize()}`);
             }
         });
     }
-});2
+});
 
 function init() {
     // Convenience.initTranslations();

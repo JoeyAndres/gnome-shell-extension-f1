@@ -11,6 +11,44 @@ const moment = momentLib.moment;
 
 let _httpSession;
 
+var F1Event = new Lang.Class({
+    Name: 'F1Event',
+
+    _init: function(cfg) {
+        this.summary = cfg.summary;
+
+        let summaryComponents = this.summary.split('-');
+
+        this.name = summaryComponents[0].trim();
+        this.session = summaryComponents[1].trim();
+        this.sessionShortName = this._sessionShortName(this.session);
+
+        this.startDateTime = cfg.startDateTime;
+        this.endDateTime = cfg.endDateTime;
+    },
+
+    delta() {
+        return moment.duration(this.startDateTime.diff(moment()), 'ms');
+    },
+
+    _sessionShortName: function(sessionName) {
+        if (sessionName.match(/first practice/i).length) {
+            return 'FP1';
+        } else if (sessionName.match(/second practice/i).length) {
+            return 'FP2';
+        } else if (sessionName.match(/third practice/i).length) {
+            return 'FP3';
+        } else if (sessionName.match(/qualifying/i).length) {
+            return 'Qualifying';
+        } else if (sessionName.match(/grand prix/i).length) {
+            return 'Race';
+        } else {
+            // If there is an abberation, have something ambiguous.
+            return 'Grand Prix';
+        }
+    }
+});
+
 var F1 = new Lang.Class({
     Name: 'F1',
 
@@ -73,8 +111,6 @@ var F1 = new Lang.Class({
         this.getF1Calendar(function(icalComp) {
             if (icalComp) {
                 let subComponents = icalComp.getAllSubcomponents();
-
-
                 let currentDateTime = moment();
                 let latestEventAhead = null;
                 for (let i = subComponents.length - 1; i >= 0; i--) {
@@ -91,18 +127,16 @@ var F1 = new Lang.Class({
                     }
                 }
 
-                let eventName = latestEventAhead.getFirstPropertyValue('summary');
-                let eventType = eventName.split('-')[eventName.split('-').length - 1].trim();
                 let startDateTime = moment(latestEventAhead.getFirstPropertyValue('dtstart').toString());
                 let endDateTime = moment(latestEventAhead.getFirstPropertyValue('dtend').toString());
 
-                fun.call(this, {
-                    name: eventName,
-                    type: eventType,
+                let f1Event = new F1Event({
+                    summary: latestEventAhead.getFirstPropertyValue('summary'),
                     startDateTime: startDateTime,
-                    endDateTime: endDateTime,
-                    delta: moment.duration(startDateTime.diff(currentDateTime), 'ms')
+                    endDateTime: endDateTime
                 });
+
+                fun.call(this, f1Event);
             } else {
                 fun.call(this, null);
             }
