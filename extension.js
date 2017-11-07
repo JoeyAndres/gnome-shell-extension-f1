@@ -1,7 +1,15 @@
-
-const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
+const Lang = imports.lang;
 const Main = imports.ui.main;
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const PanelMenu = imports.ui.panelMenu;
+const PopupMenu = imports.ui.popupMenu;
+const St = imports.gi.St;
 const Tweener = imports.ui.tweener;
+
+const Convenience = Me.imports.convenience;
+const F1 = Me.imports.f1;
+
 
 let text, button;
 
@@ -30,24 +38,62 @@ function _showHello() {
                        onComplete: _hideHello });
 }
 
-function init() {
-    button = new St.Bin({ style_class: 'panel-button',
-                          reactive: true,
-                          can_focus: true,
-                          x_fill: true,
-                          y_fill: false,
-                          track_hover: true });
-    let icon = new St.Icon({ icon_name: 'system-run-symbolic',
-                             style_class: 'system-status-icon' });
+const MoreInfoButton = new Lang.Class({
+    Name: 'MoreInfoButton',
 
-    button.set_child(icon);
-    button.connect('button-press-event', _showHello);
+    Extends: PanelMenu.Button,
+
+    _init: function() {
+        this.parent(null, 'moreInfo');
+
+        this.icon = new St.Icon({
+            icon_name: 'f1-logo',
+            style_class: 'system-status-icon',
+            icon_size: 16
+        });
+        this.statusLabel = new St.Label({ text: '\u2026', y_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        this.f1 = new F1.F1();
+
+        this.menu.removeAll();
+        this.actor.add_actor(this.statusLabel);
+
+        this._updateDisplays();
+
+        this.connect('destroy', Lang.bind(this, this._onDestroy));
+    },
+
+    _onDestroy: function() {
+        this.menu.removeAll();
+    },
+
+    setStatusLabel: function(text) {
+        this.statusLabel.set_text(text);
+    },
+
+    _updateDisplays: function () {
+        let self = this;
+        this.f1.getCurrentEvent(function(event) {
+            if (event) {
+                let eventStr = event.type;
+                self.setStatusLabel(`${eventStr} in ${event.delta.humanize()}`);
+            }
+        });
+    }
+});2
+
+function init() {
+    // Convenience.initTranslations();
+    Convenience.initIcons();
 }
 
 function enable() {
-    Main.panel._rightBox.insert_child_at_index(button, 0);
+    button = new MoreInfoButton();
+    Main.panel.addToStatusArea('moreInfo', button, 1, 'right');
 }
 
 function disable() {
-    Main.panel._rightBox.remove_child(button);
+    if (button) {
+        button.destroy();
+        button = null;
+    }
 }

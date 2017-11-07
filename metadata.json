@@ -1,1 +1,7 @@
-{"name": "f1", "description": "Keep track of upcoming formula 1 events.", "uuid": "f1@joeyandres.com", "shell-version": ["3.26.1"]}
+{
+  "name": "f1",
+  "description": "Keep track of upcoming formula 1 events.",
+  "uuid": "f1@joeyandres.com",
+  "shell-version": ["3.26.1"],
+  "version": 1
+}
