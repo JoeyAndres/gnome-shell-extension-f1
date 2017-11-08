@@ -1,6 +1,7 @@
 const Clutter = imports.gi.Clutter;
 const Lang = imports.lang;
 const Main = imports.ui.main;
+const Mainloop = imports.mainloop;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
@@ -13,32 +14,28 @@ const F1 = Me.imports.f1;
 
 let text, button;
 
-function _hideHello() {
-    Main.uiGroup.remove_actor(text);
-    text = null;
-}
+let F1EventItem = new Lang.Class({
+    Name: 'F1EventItem',
+    Extends: PopupMenu.PopupBaseMenuItem,
 
-function _showHello() {
-    if (!text) {
-        text = new St.Label({ style_class: 'helloworld-label', text: "Hello, world!" });
-        Main.uiGroup.add_actor(text);
+    _init: function (session, isCurrent) {
+        this.parent();
+
+        this._session = session;
+
+        this.icon = new St.Icon({
+            icon_name: isCurrent ? 'bullet-point-close' : 'bullet-point-open',
+            style_class: 'system-status-icon',
+            icon_size: 16
+        });
+        this.actor.add(this.icon);
+        this.actor.add(new St.Label({text: this._session.sessionShortName}));
+        this.actor.add(new St.Label({text: 'in'}));
+        this.actor.add(new St.Label({text: this._session.delta().humanize()}), {align: St.Align.END});
     }
+});
 
-    text.opacity = 255;
-
-    let monitor = Main.layoutManager.primaryMonitor;
-
-    text.set_position(monitor.x + Math.floor(monitor.width / 2 - text.width / 2),
-                      monitor.y + Math.floor(monitor.height / 2 - text.height / 2));
-
-    Tweener.addTween(text,
-                     { opacity: 0,
-                       time: 2,
-                       transition: 'easeOutQuad',
-                       onComplete: _hideHello });
-}
-
-const MoreInfoButton = new Lang.Class({
+let MoreInfoButton = new Lang.Class({
     Name: 'MoreInfoButton',
 
     Extends: PanelMenu.Button,
@@ -60,9 +57,15 @@ const MoreInfoButton = new Lang.Class({
         this._updateDisplays();
 
         this.connect('destroy', Lang.bind(this, this._onDestroy));
+
+        this._eventLoop = Mainloop.timeout_add_seconds(60, Lang.bind(this, function() {
+            this._updateDisplays();
+            return true;
+        }));
     },
 
     _onDestroy: function() {
+        Mainloop.source_remove(this._eventLoop);
         this.menu.removeAll();
     },
 
@@ -71,11 +74,27 @@ const MoreInfoButton = new Lang.Class({
     },
 
     _updateDisplays: function () {
-        let self = this;
-        this.f1.getCurrentEvent(function(event) {
-            if (event) {
-                self.setStatusLabel(`${event.sessionShortName} in ${event.delta().humanize()}`);
-            }
+        this.menu.removeAll();
+
+        this.f1.getUpcomingOrCurrentWeekend(weekend => {
+            let upComingOrCurrentSession = weekend.getUpComingOrCurrentSession();
+            this.setStatusLabel(`${upComingOrCurrentSession.sessionShortName} in ${upComingOrCurrentSession.delta().humanize()}`);
+
+            let headerItem = new PopupMenu.PopupBaseMenuItem();
+            headerItem.actor.add(this.icon);
+            headerItem.actor.add(new St.Label({text: weekend.name}), {align: St .Align.END});
+
+            let sessionSection = new PopupMenu.PopupMenuSection("Sessions");
+            sessionSection.addMenuItem(headerItem);
+
+            weekend.sessions.forEach(session => {
+                let item = new F1EventItem(
+                    session,
+                    session.isCurrentSession());
+                sessionSection.addMenuItem(item);
+            });
+
+            this.menu.addMenuItem(sessionSection);
         });
     }
 });
