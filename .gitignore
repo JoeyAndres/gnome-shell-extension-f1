@@ -2,3 +2,6 @@
 
 # IDE crap.
 /.idea/
+
+# NodeJS crap.
+/node_modules/

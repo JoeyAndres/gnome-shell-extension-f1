@@ -3,57 +3,11 @@ const Lang = imports.lang;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Soup = imports.gi.Soup;
 
-const ICALLib = Me.imports.ical;
-const ICAL = ICALLib.ICAL;
-const momentLib = Me.imports.moment;
-const moment = momentLib.moment;
-
+const ICAL = Me.imports.ical.ICAL;
+const moment = Me.imports.moment.moment;
+var F1EventFactory = Me.imports.F1Event.F1EventFactory;
 
 let _httpSession;
-
-var F1Event = new Lang.Class({
-    Name: 'F1Event',
-
-    _init: function(cfg) {
-        this.summary = cfg.summary;
-
-        let summaryComponents = this.summary.split('-');
-
-        this.name = summaryComponents[0].trim()
-            .replace(/.*Formula\s1\s*/i, '');  // Remove the prepended Formula 1.
-        this.session = summaryComponents[1].trim();
-        this.sessionShortName = this._sessionShortName(this.session);
-
-        this.startDateTime = cfg.startDateTime;
-        this.endDateTime = cfg.endDateTime;
-    },
-
-    delta() {
-        return moment.duration(this.startDateTime.diff(moment()), 'ms');
-    },
-
-    isCurrentSession() {
-        let currentDateTime = moment();
-        return currentDateTime.isBetween(this.startDateTime, this.endDateTime);
-    },
-
-    _sessionShortName: function(sessionName) {
-        if (/first\s+practice/ig.test(sessionName)) {
-            return 'FP1';
-        } else if (/second\s+practice/ig.test(sessionName)) {
-            return 'FP2';
-        } else if (/third\s+practice/ig.test(sessionName)) {
-            return 'FP3';
-        } else if (/qualifying/ig.test(sessionName)) {
-            return 'Qualifying';
-        } else if (/grand\s+prix/ig.test(sessionName)) {
-            return 'Race';
-        } else {
-            // If there is an abberation, have something ambiguous.
-            return 'Grand Prix';
-        }
-    }
-});
 
 var F1Weekend = new Lang.Class({
     Name: 'F1Weekend',
@@ -91,22 +45,6 @@ var F1Weekend = new Lang.Class({
 });
 
 let _f1Weekends = null;
-
-function _icalComponentToF1Event(iCalComp) {
-    let summary = iCalComp.getFirstPropertyValue('summary');
-    let startDateTime = moment(iCalComp.getFirstPropertyValue('dtstart').toString());
-    let endDateTime = moment(iCalComp.getFirstPropertyValue('dtend').toString());
-
-    return new F1Event({
-        summary: summary,
-        startDateTime: startDateTime,
-        endDateTime: endDateTime
-    });
-}
-
-function _f1EventsToF1Weekends(f1Events) {
-    return [];
-}
 
 function _chunkArray(array) {
     let rv = [];
@@ -184,10 +122,8 @@ var F1 = new Lang.Class({
         this.getF1Calendar(icalComp => {
             if (icalComp) {
                 let subComponents = icalComp.getAllSubcomponents();
-                let currentDateTime = moment();
-                let latestEventAhead = null;
 
-                let f1Events = subComponents.map(comp => _icalComponentToF1Event(comp));
+                let f1Events = subComponents.map(comp => F1EventFactory(comp));
                 let f1EventsChunked = _chunkArray(f1Events);
                 _f1Weekends = f1EventsChunked.map(f1EventChunk => new F1Weekend({
                     name: f1EventChunk[0].name,
@@ -195,7 +131,6 @@ var F1 = new Lang.Class({
                 }));
 
                 let upComingOrCurrentF1Weekend = this._getUpcomingOrCurrentWeekend();
-                let upComingOrCurrentF1Session = upComingOrCurrentF1Weekend.getUpComingOrCurrentSession();
 
                 fun.call(this, upComingOrCurrentF1Weekend);
             } else {

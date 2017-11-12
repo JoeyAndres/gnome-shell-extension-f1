@@ -30,8 +30,12 @@ let F1EventItem = new Lang.Class({
         });
         this.actor.add(this.icon);
         this.actor.add(new St.Label({text: this._session.sessionShortName}));
-        this.actor.add(new St.Label({text: 'in'}));
-        this.actor.add(new St.Label({text: this._session.delta().humanize()}), {align: St.Align.END});
+
+        if (!this._session.finished()) {
+            this.actor.add(new St.Label({text: 'in'}));
+        }
+
+        this.actor.add(new St.Label({text: this._session.humanizedDelta()}), {align: St.Align.END});
     }
 });
 
@@ -78,7 +82,8 @@ let MoreInfoButton = new Lang.Class({
 
         this.f1.getUpcomingOrCurrentWeekend(weekend => {
             let upComingOrCurrentSession = weekend.getUpComingOrCurrentSession();
-            this.setStatusLabel(`${upComingOrCurrentSession.sessionShortName} in ${upComingOrCurrentSession.delta().humanize()}`);
+
+            this.setStatusLabel(`${upComingOrCurrentSession.sessionShortName} in ${upComingOrCurrentSession.humanizedDelta()}`);
 
             let headerItem = new PopupMenu.PopupBaseMenuItem();
             headerItem.actor.add(this.icon);
